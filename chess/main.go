@@ -62,7 +62,7 @@ func (app *app) renderUI() error {
 	if _, err := clearScreen(); err != nil {
 		return err
 	}
-	if _, err := fmt.Println(app.ui.banner); err != nil {
+	if _, err := fmt.Println(ansiYellow(app.ui.banner)); err != nil {
 		return err
 	}
 	if err := renderBoard(app.board); err != nil {
@@ -72,7 +72,7 @@ func (app *app) renderUI() error {
 		return err
 	}
 	if app.ui.err != nil {
-		if _, err := fmt.Println(app.ui.err); err != nil {
+		if _, err := fmt.Println(ansiRed(app.ui.err.Error())); err != nil {
 			return err
 		}
 	}
@@ -83,18 +83,67 @@ func clearScreen() (int, error) {
 	return fmt.Print("\x1b[H\x1b[2J")
 }
 
+// ANSI escape codes
+const (
+	c_reset = "\033[0m"
+	// 3-4 bit
+	c_red    = "\033[31m"
+	c_yellow = "\033[33m"
+	c_bold   = "\033[1m"
+	// 24 bit TrueColor
+	fg_black       = "\033[38;2;0;0;0m"
+	bg_med_brown   = "\033[48;2;209;139;71m"
+	bg_light_peach = "\033[48;2;255;206;158m"
+)
+
+func fgTrueColor(r, g, b int) string {
+	return fmt.Sprintf("\033[38;2;%v;%v;%vm", r, g, b)
+}
+
+func bgTrueColor(r, g, b int) string {
+	return fmt.Sprintf("\033[48;2;%v;%v;%vm", r, g, b)
+}
+
+func ansiYellow(s string) string {
+	return c_yellow + s + c_reset
+}
+
+func ansiRed(s string) string {
+	return c_red + s + c_reset
+}
+
 func renderBoard(board board) error {
-	output := ""
+	vMarkers := []rune{'8', '7', '6', '5', '4', '3', '2', '1'}
+	hMarkers := []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}
+
+	output := joinHMarkers(hMarkers)
+
 	for i := range board {
+		output += string(vMarkers[i]) + " "
 		for j := range board[0] {
-			output += string(board[i][j])
+			cell := " " + string(board[i][j]) + " "
+			if (i+j)%2 == 0 {
+				output += bg_light_peach + fg_black + cell + c_reset
+			} else {
+				output += bg_med_brown + fg_black + cell + c_reset
+			}
 		}
-		output += "\n"
+		output += " " + string(vMarkers[i]) + "\n"
 	}
+	output += joinHMarkers(hMarkers)
 	if _, err := fmt.Print(output); err != nil {
 		return err
 	}
 	return nil
+}
+
+func joinHMarkers(markers []rune) string {
+	output := "  "
+	for _, v := range markers {
+		output += " " + string(v) + " "
+	}
+	output += "\n"
+	return output
 }
 
 type board [][]rune
@@ -116,14 +165,14 @@ type uiInfo struct {
 func main() {
 	app := app{
 		board: board{
-			[]rune{'R', 'K', 'B', 'W', 'Q', 'B', 'K', 'R'},
-			[]rune{'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
+			[]rune{'♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'},
+			[]rune{'♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
-			[]rune{'R', 'K', 'B', 'W', 'Q', 'B', 'K', 'R'},
+			[]rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
+			[]rune{'♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'},
 		},
 	}
 
