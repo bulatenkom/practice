@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
 type app struct {
@@ -22,8 +24,8 @@ func (app *app) gameloop() error {
 	moveRegex := regexp.MustCompile(`^([a-h][1-8]){2}$`)
 
 	for {
-		// render UI
-		if err := app.renderUI(); err != nil {
+		// paint UI
+		if err := app.paintUI(); err != nil {
 			return err
 		}
 
@@ -57,18 +59,18 @@ func (app *app) gameloop() error {
 	}
 }
 
-// renderUI()
-func (app *app) renderUI() error {
+// paintUI()
+func (app *app) paintUI() error {
 	if _, err := clearScreen(); err != nil {
 		return err
 	}
-	if _, err := fmt.Println(ansiYellow(app.ui.banner)); err != nil {
-		return err
-	}
-	if err := renderBoard(app.board); err != nil {
-		return err
-	}
-	if _, err := fmt.Println("move count:", app.moveCount); err != nil {
+	mainview := renderView(
+		ansiYellow(app.ui.banner),
+		renderBoard(app.board),
+		"move count: "+strconv.Itoa(app.moveCount),
+	)
+	layout := mainview.content
+	if _, err := fmt.Println(layout); err != nil {
 		return err
 	}
 	if app.ui.err != nil {
@@ -79,40 +81,57 @@ func (app *app) renderUI() error {
 	return nil
 }
 
+func renderView(components ...string) Box {
+	mainview := ""
+	for _, v := range components {
+		mainview += v
+		if v[len(v)-1] != '\n' {
+			mainview += "\n"
+		}
+	}
+	return NewBox(mainview)
+}
+
 func clearScreen() (int, error) {
 	return fmt.Print("\x1b[H\x1b[2J")
 }
 
-// ANSI escape codes
-const (
-	c_reset = "\033[0m"
-	// 3-4 bit
-	c_red    = "\033[31m"
-	c_yellow = "\033[33m"
-	c_bold   = "\033[1m"
-	// 24 bit TrueColor
-	fg_black       = "\033[38;2;0;0;0m"
-	bg_med_brown   = "\033[48;2;209;139;71m"
-	bg_light_peach = "\033[48;2;255;206;158m"
-)
-
-func fgTrueColor(r, g, b int) string {
-	return fmt.Sprintf("\033[38;2;%v;%v;%vm", r, g, b)
+// Box may contain single(multi)line content with all lines expanded to the width of the longest line
+type Box struct {
+	// width, height
+	w, h    int
+	content string
 }
 
-func bgTrueColor(r, g, b int) string {
-	return fmt.Sprintf("\033[48;2;%v;%v;%vm", r, g, b)
+func NewBox(s string) Box {
+	lines := strings.Split(s, "\n")
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	width := 0
+	for _, line := range lines {
+		width = max(width, len(line))
+	}
+	content := ""
+	for _, line := range lines {
+		buf := make([]rune, width+1)
+		copy(buf, []rune(line))
+		for i := len(line); i < width; i++ {
+			buf[i] = '-'
+		}
+		buf[width] = '\n'
+
+		content += string(buf)
+	}
+
+	return Box{
+		w:       width,
+		h:       len(lines),
+		content: content,
+	}
 }
 
-func ansiYellow(s string) string {
-	return c_yellow + s + c_reset
-}
-
-func ansiRed(s string) string {
-	return c_red + s + c_reset
-}
-
-func renderBoard(board board) error {
+func renderBoard(board board) string {
 	vMarkers := []rune{'8', '7', '6', '5', '4', '3', '2', '1'}
 	hMarkers := []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}
 
@@ -131,10 +150,7 @@ func renderBoard(board board) error {
 		output += " " + string(vMarkers[i]) + "\n"
 	}
 	output += joinHMarkers(hMarkers)
-	if _, err := fmt.Print(output); err != nil {
-		return err
-	}
-	return nil
+	return output
 }
 
 func joinHMarkers(markers []rune) string {
@@ -157,12 +173,18 @@ type board [][]rune
 
 type uiInfo struct {
 	banner   string // элемент для вывода текстовой информации хода игры
+	mainview string // элемент для вывода игрового интерфейса
 	sideview string // элемент для вывода вспомогательной текстовой информации
 	// история ходов
 	err error // элемент для вывода ошибок пользовательского ввода
 }
 
 func main() {
+	// in := "abc\nxyzxyz\nsome\n"
+	// box := NewBox(in)
+	// fmt.Println(in)
+	// fmt.Println(box)
+
 	app := app{
 		board: board{
 			[]rune{'♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'},
