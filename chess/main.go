@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type app struct {
@@ -51,7 +52,7 @@ func (app *app) gameloop() error {
 		case avMovesRegex.MatchString(input):
 			// togle movements for piece
 			app.ui.banner = "toggle movements"
-			app.ui.sideview = "(moves goes here...)"
+			app.ui.sideview = app.board.movements(input, app.currentPlayer())
 		case moveRegex.MatchString(input):
 			// handle move
 			if input[:2] == input[2:] {
@@ -113,6 +114,20 @@ func (app *app) paintUI() error {
 	return nil
 }
 
+var (
+	whitePieces = []rune{'♟', '♞', '♝', '♜', '♛', '♚'}
+	blackPieces = []rune{'♙', '♘', '♗', '♖', '♕', '♔'}
+)
+
+// get current player and its pieces set
+func (app *app) currentPlayer() string {
+	if app.moveCount%2 == 0 {
+		return "W"
+	} else {
+		return "B"
+	}
+}
+
 type uiInfo struct {
 	banner   string // элемент для вывода текстовой информации хода игры
 	sideview string // элемент для вывода вспомогательной текстовой информации
@@ -123,6 +138,182 @@ type uiInfo struct {
 type board [][]rune
 
 // movements() of piece in selected cell
+func (b *board) movements(cell string, player string) string {
+	s := Set([]string{})
+
+	v, i, j := b.valueAt(cell)
+
+	switch v {
+	case '♙', '♟':
+		// TODO
+		Append(s, cell+b.cellAt(i+1, j-1))
+		Append(s, cell+b.cellAt(i+1, j+1))
+		Append(s, cell+b.cellAt(i+1, j))
+		Append(s, cell+b.cellAt(i+2, j))
+	case '♘', '♞':
+		// TODO
+	case '♗', '♝':
+		s = b.movementsDiagonals(cell, 7)
+	case '♖', '♜':
+		s = b.movementsOrthogonal(cell, 7)
+	case '♕', '♛':
+		s = Union(
+			b.movementsOrthogonal(cell, 7),
+			b.movementsDiagonals(cell, 7),
+		)
+	case '♔', '♚':
+		s = Union(
+			b.movementsOrthogonal(cell, 1),
+			b.movementsDiagonals(cell, 1),
+		)
+		// TODO specific cases
+	}
+	return movementsFormatted(s)
+}
+
+// util function that traces possible moves by diagonals limited by step (cell must be ally!!!)
+func (b *board) movementsDiagonals(cell string, step int) set {
+	s := Set([]string{})
+
+	cv, ci, cj := b.valueAt(cell)
+
+	if cv == ' ' {
+		return s
+	}
+
+	var allyPieces, enemyPieces []rune
+	if strings.ContainsRune(string(whitePieces), cv) {
+		allyPieces = whitePieces
+		enemyPieces = blackPieces
+	} else {
+		allyPieces = blackPieces
+		enemyPieces = whitePieces
+	}
+	unused(enemyPieces)
+
+	// directions
+	topRight, bottomRight, bottomLeft, topLeft := true, true, true, true
+
+	trace := func(di, dj int) bool {
+		if (ci+di) >= 0 && (ci+di) < 8 && (cj+dj) >= 0 && (cj+dj) < 8 {
+			v := (*b)[ci+di][cj+dj]
+			if v == ' ' {
+				Append(s, cell+b.cellAt(ci+di, cj+dj))
+				return true
+			} else if strings.ContainsRune(string(allyPieces), v) {
+				return false
+			} else {
+				Append(s, cell+b.cellAt(ci+di, cj+dj))
+				return false
+			}
+		}
+		return false
+	}
+	for i := 1; i <= step; i++ {
+		if topRight {
+			topRight = trace(i, i)
+		}
+		if bottomRight {
+			bottomRight = trace(-i, i)
+		}
+		if bottomLeft {
+			bottomLeft = trace(-i, -i)
+		}
+		if topLeft {
+			topLeft = trace(i, -i)
+		}
+	}
+	return s
+}
+
+func unused(i ...any) {}
+
+// util function that traces possible moves by orthogonal lines limited by step (cell must be ally!!!)
+func (b *board) movementsOrthogonal(cell string, step int) set {
+	s := Set([]string{})
+
+	cv, ci, cj := b.valueAt(cell)
+
+	if cv == ' ' {
+		return s
+	}
+
+	var allyPieces, enemyPieces []rune
+	if strings.ContainsRune(string(whitePieces), cv) {
+		allyPieces = whitePieces
+		enemyPieces = blackPieces
+	} else {
+		allyPieces = blackPieces
+		enemyPieces = whitePieces
+	}
+	unused(enemyPieces)
+
+	// directions
+	top, right, bottom, left := true, true, true, true
+
+	trace := func(di, dj int) bool {
+		if (ci+di) >= 0 && (ci+di) < 8 && (cj+dj) >= 0 && (cj+dj) < 8 {
+			v := (*b)[ci+di][cj+dj]
+			if v == ' ' {
+				Append(s, cell+b.cellAt(ci+di, cj+dj))
+				return true
+			} else if strings.ContainsRune(string(allyPieces), v) {
+				return false
+			} else {
+				Append(s, cell+b.cellAt(ci+di, cj+dj))
+				return false
+			}
+		}
+		return false
+	}
+	for i := 1; i <= step; i++ {
+		if top {
+			top = trace(i, 0)
+		}
+		if right {
+			right = trace(0, i)
+		}
+		if bottom {
+			bottom = trace(-i, 0)
+		}
+		if left {
+			left = trace(0, -i)
+		}
+	}
+	return s
+}
+
+// func (b *board) attackers(cell string) set {
+// 	s := Set([]string{})
+
+// 	v, i, j := b.valueAt(cell)
+
+// 	return s
+// }
+
+func movementsFormatted(mv map[string]struct{}) string {
+	pairs := []string{}
+	for k := range mv {
+		pairs = append(pairs, fmt.Sprintf("(%s)", k))
+	}
+	return strings.Join(pairs, " ")
+}
+
+// value at cell
+func (b *board) valueAt(cell string) (rune, int, int) {
+	// 49 50 .. 56
+	//  1  2 ..  8
+	//  7  6 ..  0
+	i := -(int(cell[1]) - 56)
+	j := int(cell[0]) - 97
+	return (*b)[i][j], i, j
+}
+
+// cell at indices
+func (b *board) cellAt(i, j int) string {
+	return string(rune(j)+97) + string(rune(-i)+56)
+}
+
 // move() piece
 // checkMove()
 // updateBoard()
