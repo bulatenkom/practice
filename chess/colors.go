@@ -23,10 +23,10 @@ func bgTrueColor(r, g, b int) string {
 	return fmt.Sprintf("\033[48;2;%v;%v;%vm", r, g, b)
 }
 
-func ansiYellow(s string) string {
+func AnsiYellow(s string) string {
 	return c_yellow + s + c_reset
 }
 
-func ansiRed(s string) string {
+func AnsiRed(s string) string {
 	return c_red + s + c_reset
 }
