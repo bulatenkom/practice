@@ -52,7 +52,7 @@ func (app *app) gameloop() error {
 		case avMovesRegex.MatchString(input):
 			// togle movements for piece
 			app.ui.banner = "toggle movements"
-			app.ui.movements = app.board.movements(input, app.currentPlayer())
+			app.ui.movements = app.board.movements(input)
 			app.ui.sideview = movementsFormatted(app.ui.movements)
 		case moveRegex.MatchString(input):
 			// handle move
@@ -60,6 +60,23 @@ func (app *app) gameloop() error {
 				app.ui.err = fmt.Errorf("move '%s' is not possible. Piece cannot move to the same cell", input)
 				continue
 			}
+			if v, _, _ := app.board.valueAt(input[:2]); v == ' ' {
+				app.ui.err = fmt.Errorf("move '%s' is not possible. Cell is empty, nothing to move", input)
+				continue
+			}
+			if v, _, _ := app.board.valueAt(input[:2]); v == 'Z' { // TODO
+				app.ui.err = fmt.Errorf("move '%s' is not possible. You cannot move enemy piece", input)
+				continue
+			}
+			if !Has(app.board.movements(input[:2]), input) {
+				app.ui.err = fmt.Errorf("move '%s' is not possible. Such move is not possible for given piece", input)
+				continue
+			}
+
+			// TODO handle special case for Pawn transformation
+			// TODO handle special case for King and Rook
+
+			// TODO apply move and check that ally King is not under attack
 
 			app.ui.banner = "handle move"
 			app.moveCount++
@@ -144,7 +161,7 @@ type uiInfo struct {
 type board [][]rune
 
 // movements() of piece in selected cell
-func (b *board) movements(cell string, player string) set {
+func (b *board) movements(cell string) set {
 	s := Set([]string{})
 
 	v, _, _ := b.valueAt(cell)
@@ -371,8 +388,8 @@ func main() {
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			// []rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
+			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+			// []rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
 			[]rune{'♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'},
 		},
 	}
