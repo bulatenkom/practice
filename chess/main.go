@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -64,7 +65,13 @@ func (app *app) gameloop() error {
 				app.ui.err = fmt.Errorf("move '%s' is not possible. Cell is empty, nothing to move", input)
 				continue
 			}
-			if v, _, _ := app.board.valueAt(input[:2]); v == 'Z' { // TODO
+			var enemyPieces []rune
+			if app.currentPlayer() == "W" {
+				enemyPieces = blackPieces
+			} else {
+				enemyPieces = whitePieces
+			}
+			if v, _, _ := app.board.valueAt(input[:2]); slices.Contains(enemyPieces, v) {
 				app.ui.err = fmt.Errorf("move '%s' is not possible. You cannot move enemy piece", input)
 				continue
 			}
@@ -77,8 +84,20 @@ func (app *app) gameloop() error {
 			// TODO handle special case for King and Rook
 
 			// TODO apply move and check that ally King is not under attack
+			var king rune
+			if app.currentPlayer() == "W" {
+				king = '♔'
+			} else {
+				king = '♚'
+			}
+			newboard := app.board.move(input)
+			if newboard.isCheck(king) {
+				app.ui.err = fmt.Errorf("move '%s' is not possible. Your '%s' is under check", input, string(king))
+				continue
+			}
 
 			app.ui.banner = "handle move"
+			app.board = newboard
 			app.moveCount++
 			app.ui.history += fmt.Sprintf(" %v. %v \n", app.moveCount, input)
 			app.ui.sideview = app.ui.history
@@ -110,7 +129,7 @@ func (app *app) paintUI() error {
 	}
 	mainview := Layout(
 		[]Box{
-			NewBox(AnsiYellow(app.ui.banner)),
+			NewBox(AnsiYellow(app.ui.banner) + " " + AnsiRed(app.currentPlayerText())),
 			NewBox(RenderBoard(app.board, app.ui.movements)),
 			NewBox("move count: " + strconv.Itoa(app.moveCount)),
 		},
@@ -147,6 +166,17 @@ func (app *app) currentPlayer() string {
 		return "W"
 	} else {
 		return "B"
+	}
+}
+
+func (app *app) currentPlayerText() string {
+	switch app.currentPlayer() {
+	case "W":
+		return "White"
+	case "B":
+		return "Black"
+	default:
+		return ""
 	}
 }
 
@@ -359,18 +389,42 @@ func (b *board) makeTraceFn(s set, cell string) func(int, int) bool {
 
 func unused(i ...any) {}
 
-// func (b *board) attackers(cell string) set {
-// 	s := Set([]string{})
+func (b *board) attackers(cell string) set {
+	s := Set([]string{})
 
-// 	v, i, j := b.valueAt(cell)
+	appendSuitable := func(moves set, pieces ...rune) {
+		cells := []string{}
+		for mv := range moves {
+			cells = append(cells, mv[2:])
+		}
 
-// 	return s
-// }
+		for _, c := range cells {
+			if v, _, _ := b.valueAt(c); slices.Contains(pieces, v) {
+				Append(s, c)
+			}
+		}
+	}
+
+	appendSuitable(b.movementsPawn(cell), '♙', '♟')
+	appendSuitable(b.movementsKnight(cell), '♘', '♞')
+	appendSuitable(b.movementsOrthogonal(cell, 7), '♖', '♜', '♕', '♛')
+	appendSuitable(b.movementsOrthogonal(cell, 1), '♔', '♚')
+	appendSuitable(b.movementsDiagonals(cell, 7), '♗', '♝', '♕', '♛')
+	appendSuitable(b.movementsDiagonals(cell, 1), '♔', '♚')
+	appendSuitable(b.movementsOrthogonal(cell, 1), '♔', '♚')
+
+	return s
+}
 
 func movementsFormatted(mv map[string]struct{}) string {
 	pairs := []string{}
+	wc := 0
 	for k := range mv {
 		pairs = append(pairs, fmt.Sprintf("(%s)", k))
+		wc++
+		if wc%6 == 0 {
+			pairs = append(pairs, "\n")
+		}
 	}
 	return strings.Join(pairs, " ")
 }
@@ -390,6 +444,37 @@ func (b *board) cellAt(i, j int) string {
 	return string(rune(j)+97) + string(rune(-i)+56)
 }
 
+func (b *board) copy() board {
+	cp := board(make([][]rune, len(*b)))
+	for i, v := range *b {
+		cp[i] = make([]rune, len((*b)[i]))
+		copy(cp[i], v)
+	}
+	return cp
+}
+
+func (b *board) move(move string) board {
+	cp := b.copy()
+	v, i, j := b.valueAt(move[:2])
+	cp[i][j] = ' '
+	_, i, j = b.valueAt(move[2:])
+	cp[i][j] = v
+	return cp
+}
+
+// accepts white '♔' and black '♚'
+func (b *board) isCheck(king rune) bool {
+	// find given king
+	for i, line := range *b {
+		for j, v := range line {
+			if v == king {
+				return len(b.attackers(b.cellAt(i, j))) > 0
+			}
+		}
+	}
+	panic("King is not present on board")
+}
+
 // move() piece
 // checkMove()
 // updateBoard()
@@ -403,9 +488,8 @@ func main() {
 			[]rune{'♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{' ', '♟', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{'♟', ' ', ' ', '♟', ' ', '♟', ' ', ' '},
-			// []rune{' ', ' ', ' ', '♟', ' ', '♟', ' ', ' '},
+			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
 			[]rune{'♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'},
 		},
