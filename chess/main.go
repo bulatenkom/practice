@@ -119,8 +119,8 @@ func (app *app) paintUI() error {
 }
 
 var (
-	whitePieces = []rune{'♟', '♞', '♝', '♜', '♛', '♚'}
-	blackPieces = []rune{'♙', '♘', '♗', '♖', '♕', '♔'}
+	blackPieces = []rune{'♟', '♞', '♝', '♜', '♛', '♚'}
+	whitePieces = []rune{'♙', '♘', '♗', '♖', '♕', '♔'}
 )
 
 // get current player and its pieces set
@@ -146,15 +146,11 @@ type board [][]rune
 func (b *board) movements(cell string, player string) set {
 	s := Set([]string{})
 
-	v, i, j := b.valueAt(cell)
+	v, _, _ := b.valueAt(cell)
 
 	switch v {
 	case '♙', '♟':
-		// TODO
-		Append(s, cell+b.cellAt(i+1, j-1))
-		Append(s, cell+b.cellAt(i+1, j+1))
-		Append(s, cell+b.cellAt(i+1, j))
-		Append(s, cell+b.cellAt(i+2, j))
+		s = b.movementsPawn(cell)
 	case '♘', '♞':
 		// TODO
 	case '♗', '♝':
@@ -180,58 +176,98 @@ func (b *board) movements(cell string, player string) set {
 func (b *board) movementsDiagonals(cell string, step int) set {
 	s := Set([]string{})
 
-	cv, ci, cj := b.valueAt(cell)
+	cv, _, _ := b.valueAt(cell)
 
 	if cv == ' ' {
 		return s
 	}
 
-	var allyPieces, enemyPieces []rune
-	if strings.ContainsRune(string(whitePieces), cv) {
-		allyPieces = whitePieces
-		enemyPieces = blackPieces
-	} else {
-		allyPieces = blackPieces
-		enemyPieces = whitePieces
-	}
-	unused(enemyPieces)
-
-	trace := func(di, dj int) bool {
-		if (ci+di) >= 0 && (ci+di) < 8 && (cj+dj) >= 0 && (cj+dj) < 8 {
-			v := (*b)[ci+di][cj+dj]
-			if v == ' ' {
-				Append(s, cell+b.cellAt(ci+di, cj+dj))
-				return true
-			} else if strings.ContainsRune(string(allyPieces), v) {
-				return false
-			} else {
-				Append(s, cell+b.cellAt(ci+di, cj+dj))
-				return false
-			}
-		}
-		return false
-	}
+	trace := b.makeTraceFn(s, cell)
 
 	// directions
 	topRight, bottomRight, bottomLeft, topLeft := true, true, true, true
 
 	for i := 1; i <= step; i++ {
 		if topRight {
-			topRight = trace(i, i)
+			topRight = trace(-i, i)
 		}
 		if bottomRight {
-			bottomRight = trace(-i, i)
+			bottomRight = trace(i, i)
 		}
 		if bottomLeft {
-			bottomLeft = trace(-i, -i)
+			bottomLeft = trace(i, -i)
 		}
 		if topLeft {
-			topLeft = trace(i, -i)
+			topLeft = trace(-i, -i)
 		}
 	}
 	return s
 }
 
+// util function that traces possible moves by orthogonal lines limited by step (cell must be ally!!!)
+func (b *board) movementsOrthogonal(cell string, step int) set {
+	s := Set([]string{})
+
+	cv, _, _ := b.valueAt(cell)
+
+	if cv == ' ' {
+		return s
+	}
+
+	trace := b.makeTraceFn(s, cell)
+
+	// directions
+	top, right, bottom, left := true, true, true, true
+
+	for i := 1; i <= step; i++ {
+		if top {
+			top = trace(-i, 0)
+		}
+		if right {
+			right = trace(0, i)
+		}
+		if bottom {
+			bottom = trace(i, 0)
+		}
+		if left {
+			left = trace(0, -i)
+		}
+	}
+	return s
+}
+
+func (b *board) movementsPawn(cell string) set {
+	s := Set([]string{})
+
+	cv, ci, _ := b.valueAt(cell)
+
+	if cv == ' ' {
+		return s
+	}
+
+	trace := b.makeTraceFn(s, cell)
+
+	if strings.ContainsRune(string(whitePieces), cv) {
+		// if white Pawn
+		trace(1, 0)
+		trace(1, 1)
+		trace(1, -1)
+		if ci == 6 {
+			trace(2, 0)
+		}
+	} else {
+		// if black Pawn
+		trace(-1, 0)
+		trace(-1, 1)
+		trace(-1, -1)
+		if ci == 1 {
+			trace(-2, 0)
+		}
+	}
+	return s
+}
+
+// cell must contain piece
 func (b *board) makeTraceFn(s set, cell string) func(int, int) bool {
 	cv, ci, cj := b.valueAt(cell)
 
@@ -264,65 +300,6 @@ func (b *board) makeTraceFn(s set, cell string) func(int, int) bool {
 
 func unused(i ...any) {}
 
-// util function that traces possible moves by orthogonal lines limited by step (cell must be ally!!!)
-func (b *board) movementsOrthogonal(cell string, step int) set {
-	s := Set([]string{})
-
-	cv, ci, cj := b.valueAt(cell)
-
-	if cv == ' ' {
-		return s
-	}
-
-	var allyPieces, enemyPieces []rune
-	if strings.ContainsRune(string(whitePieces), cv) {
-		allyPieces = whitePieces
-		enemyPieces = blackPieces
-	} else {
-		allyPieces = blackPieces
-		enemyPieces = whitePieces
-	}
-	unused(enemyPieces)
-
-	// directions
-	top, right, bottom, left := true, true, true, true
-
-	trace := func(di, dj int) bool {
-		if (ci+di) >= 0 && (ci+di) < 8 && (cj+dj) >= 0 && (cj+dj) < 8 {
-			v := (*b)[ci+di][cj+dj]
-			if v == ' ' {
-				Append(s, cell+b.cellAt(ci+di, cj+dj))
-				return true
-			} else if strings.ContainsRune(string(allyPieces), v) {
-				return false
-			} else {
-				Append(s, cell+b.cellAt(ci+di, cj+dj))
-				return false
-			}
-		}
-		return false
-	}
-	for i := 1; i <= step; i++ {
-		if top {
-			top = trace(i, 0)
-		}
-		if right {
-			right = trace(0, i)
-		}
-		if bottom {
-			bottom = trace(-i, 0)
-		}
-		if left {
-			left = trace(0, -i)
-		}
-	}
-	return s
-}
-
-func (b *board) movementsPawn(cell string) set {
-	return Set([]string{})
-}
-
 // func (b *board) attackers(cell string) set {
 // 	s := Set([]string{})
 
@@ -345,6 +322,7 @@ func (b *board) valueAt(cell string) (rune, int, int) {
 	//  1  2 ..  8
 	//  7  6 ..  0
 	i := -(int(cell[1]) - 56)
+
 	j := int(cell[0]) - 97
 	return (*b)[i][j], i, j
 }
@@ -369,8 +347,8 @@ func main() {
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			// []rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
+			// []rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+			[]rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
 			[]rune{'♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'},
 		},
 	}
