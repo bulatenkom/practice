@@ -257,7 +257,7 @@ func (b *board) movementsOrthogonal(cell string, step int) set {
 func (b *board) movementsPawn(cell string) set {
 	s := Set([]string{})
 
-	cv, ci, _ := b.valueAt(cell)
+	cv, ci, cj := b.valueAt(cell)
 
 	if cv == ' ' {
 		return s
@@ -265,24 +265,41 @@ func (b *board) movementsPawn(cell string) set {
 
 	trace := b.makeTraceFn(s, cell)
 
-	if strings.ContainsRune(string(whitePieces), cv) {
-		// if white Pawn
-		trace(1, 0)
-		trace(1, 1)
-		trace(1, -1)
-		if ci == 6 {
-			trace(2, 0)
-		}
-	} else {
-		// if black Pawn
-		trace(-1, 0)
-		trace(-1, 1)
-		trace(-1, -1)
-		if ci == 1 {
-			trace(-2, 0)
-		}
+	isBoardBounds := func(di, dj int) bool {
+		return (ci+di) >= 0 && (ci+di) < 8 && (cj+dj) >= 0 && (cj+dj) < 8
 	}
-	return s
+
+	valueAtShift := func(di, dj int) rune {
+		return (*b)[ci+di][cj+dj]
+	}
+
+	isEnemy := func(di, dj int) bool {
+		return valueAtShift(0, 0) == '♙' && valueAtShift(di, dj) == '♟' || valueAtShift(0, 0) == '♟' && valueAtShift(di, dj) == '♙'
+	}
+
+	// 1	- calculate for black Pawn
+	// -1	- calculate for white Pawn
+	movements := func(direction int) set {
+		if isBoardBounds(direction*1, 0) && valueAtShift(direction*1, 0) == ' ' {
+			trace(direction*1, 0)
+			if isBoardBounds(direction*2, 0) && valueAtShift(direction*2, 0) == ' ' && (ci == 1 || ci == 6) {
+				trace(direction*2, 0)
+			}
+		}
+		if isBoardBounds(direction*1, 1) && isEnemy(direction*1, 1) {
+			trace(direction*1, 1)
+		}
+		if isBoardBounds(direction*1, -1) && isEnemy(direction*1, -1) {
+			trace(direction*1, -1)
+		}
+		return s
+	}
+
+	if strings.ContainsRune(string(whitePieces), cv) {
+		return movements(-1)
+	} else {
+		return movements(1)
+	}
 }
 
 func (b *board) movementsKnight(cell string) set {
@@ -386,10 +403,10 @@ func main() {
 			[]rune{'♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			// []rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
+			[]rune{' ', '♟', ' ', ' ', ' ', ' ', ' ', ' '},
+			[]rune{'♟', ' ', ' ', '♟', ' ', '♟', ' ', ' '},
+			// []rune{' ', ' ', ' ', '♟', ' ', '♟', ' ', ' '},
+			[]rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
 			[]rune{'♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'},
 		},
 	}
