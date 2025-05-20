@@ -40,7 +40,7 @@ func NewBox(s string) Box {
 	}
 }
 
-var escapeSeqMatcher *regexp.Regexp = regexp.MustCompile("(\033\\[0m|\033\\[31m|\033\\[33m|\033\\[1m|\033\\[38;2;0;0;0m|\033\\[48;2;209;139;71m|\033\\[48;2;255;206;158m)")
+var escapeSeqMatcher *regexp.Regexp = regexp.MustCompile("(\033\\[0m|\033\\[31m|\033\\[33m|\033\\[1m|\033\\[38;2;0;0;0m|\033\\[48;2;209;139;71m|\033\\[48;2;255;206;158m|\033\\[48;2;168;168;240m|\033\\[48;2;148;112;192m)")
 
 func CountRunesIgnoringAnsiEscapes(s string) int {
 	res := escapeSeqMatcher.ReplaceAllLiteralString(s, "")
@@ -93,9 +93,33 @@ func Layout(boxes []Box, orientation Orientation) Box {
 	return Box{}
 }
 
-func RenderBoard(board board) string {
+func RenderBoard(board board, movements set) string {
 	vMarkers := []rune{'8', '7', '6', '5', '4', '3', '2', '1'}
 	hMarkers := []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}
+
+	tarCells := Set([]string{})
+	for mv := range movements {
+		Append(tarCells, mv[2:])
+	}
+
+	isSelected := func(i, j int) bool {
+		return Has(tarCells, board.cellAt(i, j))
+	}
+
+	determineColor := func(i, j int, cell string) string {
+		if isSelected(i, j) {
+			if (i+j)%2 == 0 {
+				return bg_cell_selected_light + fg_black + cell + c_reset
+			} else {
+				return bg_cell_selected_dark + fg_black + cell + c_reset
+			}
+		}
+		if (i+j)%2 == 0 {
+			return bg_light_peach + fg_black + cell + c_reset
+		} else {
+			return bg_med_brown + fg_black + cell + c_reset
+		}
+	}
 
 	output := joinHMarkers(hMarkers)
 
@@ -103,11 +127,7 @@ func RenderBoard(board board) string {
 		output += string(vMarkers[i]) + " "
 		for j := range board[0] {
 			cell := " " + string(board[i][j]) + " "
-			if (i+j)%2 == 0 {
-				output += bg_light_peach + fg_black + cell + c_reset
-			} else {
-				output += bg_med_brown + fg_black + cell + c_reset
-			}
+			output += determineColor(i, j, cell)
 		}
 		output += " " + string(vMarkers[i]) + "\n"
 	}

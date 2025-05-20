@@ -52,7 +52,8 @@ func (app *app) gameloop() error {
 		case avMovesRegex.MatchString(input):
 			// togle movements for piece
 			app.ui.banner = "toggle movements"
-			app.ui.sideview = app.board.movements(input, app.currentPlayer())
+			app.ui.movements = app.board.movements(input, app.currentPlayer())
+			app.ui.sideview = movementsFormatted(app.ui.movements)
 		case moveRegex.MatchString(input):
 			// handle move
 			if input[:2] == input[2:] {
@@ -70,6 +71,9 @@ func (app *app) gameloop() error {
 		}
 		// reset temp states
 		app.ui.err = nil
+		if !avMovesRegex.MatchString(input) {
+			app.ui.movements = nil
+		}
 	}
 }
 
@@ -89,7 +93,7 @@ func (app *app) paintUI() error {
 	mainview := Layout(
 		[]Box{
 			NewBox(AnsiYellow(app.ui.banner)),
-			NewBox(RenderBoard(app.board)),
+			NewBox(RenderBoard(app.board, app.ui.movements)),
 			NewBox("move count: " + strconv.Itoa(app.moveCount)),
 		},
 		Vertical,
@@ -129,16 +133,17 @@ func (app *app) currentPlayer() string {
 }
 
 type uiInfo struct {
-	banner   string // элемент для вывода текстовой информации хода игры
-	sideview string // элемент для вывода вспомогательной текстовой информации
-	history  string // история ходов
-	err      error  // элемент для вывода ошибок пользовательского ввода
+	banner    string // элемент для вывода текстовой информации хода игры
+	sideview  string // элемент для вывода вспомогательной текстовой информации
+	movements set    // элемент содержащий возможные ходы для выбранной фигуры (используется для раскраски целевых клеток)
+	history   string // история ходов
+	err       error  // элемент для вывода ошибок пользовательского ввода
 }
 
 type board [][]rune
 
 // movements() of piece in selected cell
-func (b *board) movements(cell string, player string) string {
+func (b *board) movements(cell string, player string) set {
 	s := Set([]string{})
 
 	v, i, j := b.valueAt(cell)
@@ -168,7 +173,7 @@ func (b *board) movements(cell string, player string) string {
 		)
 		// TODO specific cases
 	}
-	return movementsFormatted(s)
+	return s
 }
 
 // util function that traces possible moves by diagonals limited by step (cell must be ally!!!)
@@ -191,9 +196,6 @@ func (b *board) movementsDiagonals(cell string, step int) set {
 	}
 	unused(enemyPieces)
 
-	// directions
-	topRight, bottomRight, bottomLeft, topLeft := true, true, true, true
-
 	trace := func(di, dj int) bool {
 		if (ci+di) >= 0 && (ci+di) < 8 && (cj+dj) >= 0 && (cj+dj) < 8 {
 			v := (*b)[ci+di][cj+dj]
@@ -209,6 +211,10 @@ func (b *board) movementsDiagonals(cell string, step int) set {
 		}
 		return false
 	}
+
+	// directions
+	topRight, bottomRight, bottomLeft, topLeft := true, true, true, true
+
 	for i := 1; i <= step; i++ {
 		if topRight {
 			topRight = trace(i, i)
@@ -224,6 +230,36 @@ func (b *board) movementsDiagonals(cell string, step int) set {
 		}
 	}
 	return s
+}
+
+func (b *board) makeTraceFn(s set, cell string) func(int, int) bool {
+	cv, ci, cj := b.valueAt(cell)
+
+	var allyPieces, enemyPieces []rune
+	if strings.ContainsRune(string(whitePieces), cv) {
+		allyPieces = whitePieces
+		enemyPieces = blackPieces
+	} else {
+		allyPieces = blackPieces
+		enemyPieces = whitePieces
+	}
+	unused(enemyPieces)
+
+	return func(di, dj int) bool {
+		if (ci+di) >= 0 && (ci+di) < 8 && (cj+dj) >= 0 && (cj+dj) < 8 {
+			v := (*b)[ci+di][cj+dj]
+			if v == ' ' {
+				Append(s, cell+b.cellAt(ci+di, cj+dj))
+				return true
+			} else if strings.ContainsRune(string(allyPieces), v) {
+				return false
+			} else {
+				Append(s, cell+b.cellAt(ci+di, cj+dj))
+				return false
+			}
+		}
+		return false
+	}
 }
 
 func unused(i ...any) {}
@@ -283,6 +319,10 @@ func (b *board) movementsOrthogonal(cell string, step int) set {
 	return s
 }
 
+func (b *board) movementsPawn(cell string) set {
+	return Set([]string{})
+}
+
 // func (b *board) attackers(cell string) set {
 // 	s := Set([]string{})
 
@@ -329,7 +369,8 @@ func main() {
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
 			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-			[]rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
+			[]rune{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+			// []rune{'♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'},
 			[]rune{'♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖'},
 		},
 	}

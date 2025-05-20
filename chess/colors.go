@@ -13,6 +13,10 @@ const (
 	fg_black       = "\033[38;2;0;0;0m"
 	bg_med_brown   = "\033[48;2;209;139;71m"
 	bg_light_peach = "\033[48;2;255;206;158m"
+	// bg_cell_selected_light = "\033[48;2;128;128;240m"
+	bg_cell_selected_light = "\033[48;2;168;168;240m"
+	// bg_cell_selected_dark  = "\033[48;2;128;92;192m"
+	bg_cell_selected_dark = "\033[48;2;148;112;192m"
 )
 
 func fgTrueColor(r, g, b int) string {
