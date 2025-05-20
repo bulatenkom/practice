@@ -82,6 +82,7 @@ func helpTemplate() string {
   help, h, ?, /? - toggles help window
   [a-h][1-8] - prints possible moves for selected piece (e.g. 'e2' prints moves for Pawn)
   [a-h][1-8][a-h][1-8] - move piece (e.g. 'e2e4' moves piece from e2 to e4)
+  hist, history - prints performed moves during the game
 `
 }
 
@@ -101,7 +102,7 @@ func (app *app) paintUI() error {
 	sideview := Layout(
 		[]Box{
 			NewBox(app.ui.sideview),
-			// NewBox(ansiRed(app.ui.sideview)),
+			// NewBox(ansiRed(app.ui.sideview)), // FIXME
 		},
 		Vertical,
 	)
@@ -291,6 +292,7 @@ func (b *board) movementsKnight(cell string) set {
 }
 
 // cell must contain piece
+// piece placed within cell is assumed to be allied
 func (b *board) makeTraceFn(s set, cell string) func(int, int) bool {
 	cv, ci, cj := b.valueAt(cell)
 
@@ -339,19 +341,18 @@ func movementsFormatted(mv map[string]struct{}) string {
 	return strings.Join(pairs, " ")
 }
 
-// value at cell
 func (b *board) valueAt(cell string) (rune, int, int) {
-	// 49 50 .. 56
-	//  1  2 ..  8
-	//  7  6 ..  0
+	// 49 50 .. 56 - asci code
+	//  1  2 ..  8 - chess notation
+	//  7  6 ..  0 - board index
 	i := -(int(cell[1]) - 56)
 
 	j := int(cell[0]) - 97
 	return (*b)[i][j], i, j
 }
 
-// cell at indices
 func (b *board) cellAt(i, j int) string {
+	// backward operation to valueAt(...)
 	return string(rune(j)+97) + string(rune(-i)+56)
 }
 
