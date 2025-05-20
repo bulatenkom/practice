@@ -152,7 +152,7 @@ func (b *board) movements(cell string, player string) set {
 	case '♙', '♟':
 		s = b.movementsPawn(cell)
 	case '♘', '♞':
-		// TODO
+		s = b.movementsKnight(cell)
 	case '♗', '♝':
 		s = b.movementsDiagonals(cell, 7)
 	case '♖', '♜':
@@ -264,6 +264,29 @@ func (b *board) movementsPawn(cell string) set {
 			trace(-2, 0)
 		}
 	}
+	return s
+}
+
+func (b *board) movementsKnight(cell string) set {
+	s := Set([]string{})
+
+	cv, _, _ := b.valueAt(cell)
+
+	if cv == ' ' {
+		return s
+	}
+
+	trace := b.makeTraceFn(s, cell)
+
+	trace(2, 1)
+	trace(2, -1)
+	trace(-2, 1)
+	trace(-2, -1)
+	trace(1, 2)
+	trace(-1, 2)
+	trace(1, -2)
+	trace(-1, -2)
+
 	return s
 }
 
