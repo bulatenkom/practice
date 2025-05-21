@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+var (
+	blackPieces = []rune{'♟', '♞', '♝', '♜', '♛', '♚'}
+	whitePieces = []rune{'♙', '♘', '♗', '♖', '♕', '♔'}
+)
+
 type board [][]rune
 
 // movements() of piece in selected cell
@@ -42,7 +47,7 @@ func (b *board) movements(cell string) set {
 	return s
 }
 
-// util function that traces possible moves by diagonals limited by step (cell must be ally!!!)
+// util function that traces possible moves by diagonals limited by step
 func (b *board) movementsDiagonals(cell string, step int) set {
 	s := Set([]string{})
 
@@ -74,7 +79,7 @@ func (b *board) movementsDiagonals(cell string, step int) set {
 	return s
 }
 
-// util function that traces possible moves by orthogonal lines limited by step (cell must be ally!!!)
+// util function that traces possible moves by orthogonal lines limited by step
 func (b *board) movementsOrthogonal(cell string, step int) set {
 	s := Set([]string{})
 
@@ -134,7 +139,6 @@ func (b *board) movementsPawn(cell string) set {
 			return true
 		}
 		return false
-		// return valueAtShift(0, 0) == '♙' && valueAtShift(di, dj) == '♟' || valueAtShift(0, 0) == '♟' && valueAtShift(di, dj) == '♙'
 	}
 
 	// 1	- calculate for black Pawn
@@ -234,7 +238,6 @@ func (b *board) attackers(cell string) set {
 			}
 		}
 	}
-
 	appendSuitable(b.movementsPawn(cell), '♙', '♟')
 	appendSuitable(b.movementsKnight(cell), '♘', '♞')
 	appendSuitable(b.movementsOrthogonal(cell, 7), '♖', '♜', '♕', '♛')

@@ -19,7 +19,55 @@
 - Для компоновки интерфейса (лейаута) из нескольких блоков, вводятся абстракции: Box, Layout, Orientation
 - Движение пешек реализовано с учетом, того что белые фишки начинаю игру с нижней части доски, а черные с верхней
 
-## Интерфейс
-```go
+## Статус реализации функциональности
 
+- (реализовано) перемещение фигур с учетом правил их перемещения
+- (реализовано) проверки шаха, мата, пата
+- (не реализовано) битое поле
+- (не реализовано) превращение пешки
+- (не реализовано) рокировка
+- (не реализовано) проверки ситуаций приводящих к ничье (троекратное повторение, недостаток материала, правило 50 ходов)
+
+## Демо
+
+### Колоночный лейаут (раскладка)
+
+![](./doc/layout.png)
+
+### История ходов
+
+![](./doc/italian.png)
+
+### Выделение клеток, на которые может сходить фигура
+
+![](./doc/movements.png)
+
+### Демо (Передвижение фигур, выбор фигуры)
+
+![](./doc/demo.gif)
+
+### Демо (Шах)
+
+![](./doc/checkmate.gif)
+
+## Запись сессии терминала для README
+
+```sh
+# record terminal session
+terminalizer record demo
+
+# update demo.yaml
+fontFamily: "IosevkaTerm NFM, Arial Unicode MS, Monaco, Lucida Console, Ubuntu Mono, Monospace"
+fontSize: 18
+
+# render
+terminalizer render demo
+```
+Установка шрифтов
+```sh
+# 1. get both fonts from www (IosevkaTerm NFM, Arial Unicode MS)
+# 2. move fonts to other fonts, e.g.
+mv ./*.ttf ~/.local/share/fonts
+# 3. update font cache
+fc-cache -vf
 ```

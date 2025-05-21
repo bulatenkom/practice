@@ -22,6 +22,14 @@ type app struct {
 	ui uiInfo // элементы интерфейса
 }
 
+type uiInfo struct {
+	banner    string // элемент для вывода текстовой информации хода игры
+	sideview  string // элемент для вывода вспомогательной текстовой информации
+	movements set    // элемент содержащий возможные ходы для выбранной фигуры (используется для раскраски целевых клеток)
+	history   string // история ходов
+	err       error  // элемент для вывода ошибок пользовательского ввода
+}
+
 // gameloop()
 func (app *app) gameloop() error {
 	// prepare input matchers
@@ -140,15 +148,6 @@ func (app *app) updateStateFlags() {
 	}
 }
 
-func helpTemplate() string {
-	return `HELP
-  help, h, ?, /? - toggles help window
-  [a-h][1-8] - prints possible moves for selected piece (e.g. 'e2' prints moves for Pawn)
-  [a-h][1-8][a-h][1-8] - move piece (e.g. 'e2e4' moves piece from e2 to e4)
-  hist, history - prints performed moves during the game
-`
-}
-
 // paintUI()
 func (app *app) paintUI() error {
 	if _, err := ClearScreen(); err != nil {
@@ -180,24 +179,6 @@ func (app *app) paintUI() error {
 	return nil
 }
 
-func renderBanner(app *app) string {
-	if app.flags.checkmate {
-		return AnsiRed("checkmate")
-	}
-	if app.flags.stalemate {
-		return AnsiRed("stalemate")
-	}
-	if app.flags.check {
-		return AnsiRed("check")
-	}
-	return AnsiYellow(app.ui.banner)
-}
-
-var (
-	blackPieces = []rune{'♟', '♞', '♝', '♜', '♛', '♚'}
-	whitePieces = []rune{'♙', '♘', '♗', '♖', '♕', '♔'}
-)
-
 // get current player and its pieces set
 func (app *app) currentPlayer() string {
 	if app.moveCount%2 == 0 {
@@ -218,12 +199,26 @@ func (app *app) currentPlayerText() string {
 	}
 }
 
-type uiInfo struct {
-	banner    string // элемент для вывода текстовой информации хода игры
-	sideview  string // элемент для вывода вспомогательной текстовой информации
-	movements set    // элемент содержащий возможные ходы для выбранной фигуры (используется для раскраски целевых клеток)
-	history   string // история ходов
-	err       error  // элемент для вывода ошибок пользовательского ввода
+func renderBanner(app *app) string {
+	if app.flags.checkmate {
+		return AnsiRed("checkmate")
+	}
+	if app.flags.stalemate {
+		return AnsiRed("stalemate")
+	}
+	if app.flags.check {
+		return AnsiRed("check")
+	}
+	return AnsiYellow(app.ui.banner)
+}
+
+func helpTemplate() string {
+	return `HELP
+  help, h, ?, /? - toggles help window
+  [a-h][1-8] - prints possible moves for selected piece (e.g. 'e2' prints moves for Pawn)
+  [a-h][1-8][a-h][1-8] - move piece (e.g. 'e2e4' moves piece from e2 to e4)
+  hist, history - prints performed moves during the game
+`
 }
 
 func movementsFormatted(mv map[string]struct{}) string {

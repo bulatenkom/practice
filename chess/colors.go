@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 // ANSI escape codes
 const (
 	c_reset = "\033[0m"
@@ -10,22 +8,12 @@ const (
 	c_yellow = "\033[33m"
 	c_bold   = "\033[1m"
 	// 24 bit TrueColor
-	fg_black       = "\033[38;2;0;0;0m"
-	bg_med_brown   = "\033[48;2;209;139;71m"
-	bg_light_peach = "\033[48;2;255;206;158m"
-	// bg_cell_selected_light = "\033[48;2;128;128;240m"
+	fg_black               = "\033[38;2;0;0;0m"
+	bg_med_brown           = "\033[48;2;209;139;71m"
+	bg_light_peach         = "\033[48;2;255;206;158m"
 	bg_cell_selected_light = "\033[48;2;168;168;240m"
-	// bg_cell_selected_dark  = "\033[48;2;128;92;192m"
-	bg_cell_selected_dark = "\033[48;2;148;112;192m"
+	bg_cell_selected_dark  = "\033[48;2;148;112;192m"
 )
-
-func fgTrueColor(r, g, b int) string {
-	return fmt.Sprintf("\033[38;2;%v;%v;%vm", r, g, b)
-}
-
-func bgTrueColor(r, g, b int) string {
-	return fmt.Sprintf("\033[48;2;%v;%v;%vm", r, g, b)
-}
 
 func AnsiYellow(s string) string {
 	return c_yellow + s + c_reset
